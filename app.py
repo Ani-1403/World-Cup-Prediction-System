@@ -5,7 +5,6 @@ import pytz
 import requests
 import json
 import time
-from squads import SQUADS
 from fixtures import get_active_fixtures
 
 st.set_page_config(page_title="World Cup Predictor", layout="wide")
@@ -37,7 +36,6 @@ if username == "ADMIN_RESULT":
 
 tab1, tab2, tab3 = st.tabs(["Prediction", "Leaderboards", "Admin Panel"])
 
-# --- TAB 1: USER PREDICTIONS ---
 with tab1:
     open_fixtures = [f for f in FIXTURES if current_time < f["kickoff"]]
     
@@ -54,7 +52,6 @@ with tab1:
         
         has_predicted = False
         if not df_existing.empty:
-            # Corrected pandas string chaining here
             has_predicted = not df_existing[(df_existing['User'].str.lower() == username.lower()) & 
                                             (df_existing['Match'].str.strip().str.lower() == active_fixture['match'].strip().lower())].empty
 
@@ -62,7 +59,6 @@ with tab1:
             st.success("You have already submitted a prediction for this match.")
         else:
             team1, team2 = active_fixture['match'].split(" vs ")
-            pool_choices = sorted(SQUADS.get(team1, ["Player A"]) + SQUADS.get(team2, ["Player B"]))
             
             with st.form("prediction_form", clear_on_submit=True):
                 col1, col2 = st.columns(2)
@@ -70,8 +66,6 @@ with tab1:
                 t2_score = col2.number_input(f"{team2} Score", min_value=0, max_value=25, step=1, value=0)
                 
                 pen_winner = st.selectbox("Penalty Winner (if draw)", ["None", team1, team2])
-                motm = st.selectbox("MOTM", pool_choices)
-                scorers_list = st.multiselect("Scorers", pool_choices)
                 
                 if st.form_submit_button("Submit Prediction"):
                     if t1_score == t2_score and pen_winner == "None":
@@ -85,8 +79,8 @@ with tab1:
                             "t1_score": int(t1_score),
                             "t2_score": int(t2_score),
                             "pen_winner": pen_winner,
-                            "motm": motm,
-                            "scorers": ", ".join(scorers_list) if scorers_list else "None"
+                            "motm": "N/A",      # Hidden to preserve Google Sheet columns
+                            "scorers": "N/A"    # Hidden to preserve Google Sheet columns
                         }
                         try:
                             res = requests.post(WEBAPP_URL, data=json.dumps(payload))
@@ -98,7 +92,7 @@ with tab1:
                             st.error(f"Network error: {e}")
                             st.info("Check if your WEBAPP_URL deployment ID is correct.")
 
-# --- TAB 2: LIVE LEADERBOARDS & USER PICKS ---
+
 with tab2:
     st.header("Leaderboard")
     public_leaderboard = df_existing[df_existing['User'] != 'ADMIN_RESULT']
@@ -117,21 +111,20 @@ with tab2:
         st.write("No predictions submitted yet.")
     else:
         for m in df_existing['Match'].unique():
-            # Corrected match lookup
             match_dict = next((item for item in FIXTURES if item["match"].strip().lower() == str(m).strip().lower()), None)
             st.subheader(f"Match: {m}")
             
             if match_dict is None or current_time < match_dict['kickoff']:
                 st.warning("Predictions are hidden until kickoff.")
-                # Corrected pandas string chaining here
                 users = df_existing[(df_existing['Match'].str.strip().str.lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]['User'].tolist()
                 st.write(f"**Submitted by:** {', '.join(users) if users else 'None'}")
             else:
-                # Corrected pandas string chaining here
                 public_df = df_existing[(df_existing['Match'].str.strip().str.lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]
-                st.dataframe(public_df, use_container_width=True)
+                # Hide the MOTM and Scorers columns from the public view
+                display_df = public_df.drop(columns=["MOTM", "Scorers", "Timestamp"], errors='ignore')
+                st.dataframe(display_df, use_container_width=True)
 
-# --- TAB 3: ADMIN PANEL ---
+
 with tab3:
     st.header("Admin Panel")
     admin_pass = st.text_input("Admin Password", type="password")
@@ -149,10 +142,6 @@ with tab3:
             act_t2 = col2.number_input(f"{team2} Final Score", min_value=0, step=1, value=0)
             act_pen = st.selectbox("Penalty Winner (if draw)", ["None", team1, team2])
             
-            match_pool = sorted(SQUADS.get(team1, ["Player A"]) + SQUADS.get(team2, ["Player B"]))
-            act_motm = st.selectbox("Official MOTM", match_pool)
-            act_scorers = st.multiselect("Official Scorers", match_pool)
-            
             if st.button("Submit Official Results"):
                 if df_existing[df_existing['User'] != 'ADMIN_RESULT'].empty:
                     st.error("No users to score.")
@@ -164,32 +153,26 @@ with tab3:
                             return row['Points']
                         
                         pts = 0
-                        p_diff = int(row['Team1_Score']) - int(row['Team2_Score'])
+                        p_t1 = int(row['Team1_Score'])
+                        p_t2 = int(row['Team2_Score'])
+                        p_diff = p_t1 - p_t2
                         a_diff = act_t1 - act_t2
                         
-                        if a_diff == 0:  
-                            if p_diff == 0:
-                                pts += 3 if str(row['Pen_Winner']) == act_pen else 1
-                        else:  
-                            if int(row['Team1_Score']) == act_t1 and int(row['Team2_Score']) == act_t2:
-                                pts += 3
-                            elif (p_diff > 0 and a_diff > 0) or (p_diff < 0 and a_diff < 0):
-                                pts += 2
-                        
-                        if str(row['MOTM']).strip().lower() == act_motm.lower():
-                            pts += 2
-                        
-                        p_list = [s.strip().lower() for s in str(row['Scorers']).split(',') if s.strip() and s.strip().lower() != 'none']
-                        a_list = [s.strip().lower() for s in act_scorers]
-                        for scorer in p_list:
-                            if scorer in a_list:
+                        # 1. Exact Score Match (3 Points)
+                        if p_t1 == act_t1 and p_t2 == act_t2:
+                            pts += 3
+                        # 2. Correct Outcome (1 Point)
+                        elif (p_diff > 0 and a_diff > 0) or (p_diff < 0 and a_diff < 0) or (p_diff == 0 and a_diff == 0):
+                            pts += 1
+                            
+                        # 3. Penalty Bonus (+1 Point if match was a draw and penalty guessed correctly)
+                        if a_diff == 0 and act_pen != "None":
+                            if str(row['Pen_Winner']) == act_pen:
                                 pts += 1
-                                a_list.remove(scorer)
+                                
                         return pts
 
                     df_existing['Points'] = df_existing.apply(calc_row_points, axis=1)
-                    
-                    # Corrected pandas string chaining here
                     df_existing = df_existing[~((df_existing['User'] == 'ADMIN_RESULT') & (df_existing['Match'].str.strip().str.lower() == match_to_resolve.strip().lower()))]
                     
                     new_admin_row = pd.DataFrame([{
@@ -199,8 +182,8 @@ with tab3:
                         "Team1_Score": act_t1,
                         "Team2_Score": act_t2,
                         "Pen_Winner": act_pen,
-                        "MOTM": act_motm,
-                        "Scorers": ", ".join(act_scorers) if act_scorers else "None",
+                        "MOTM": "N/A",
+                        "Scorers": "N/A",
                         "Points": 0
                     }])
                     
