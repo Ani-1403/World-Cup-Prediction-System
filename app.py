@@ -1,10 +1,10 @@
-import time
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
 import requests
 import json
+import time
 from squads import SQUADS
 from fixtures import get_active_fixtures
 
@@ -54,8 +54,9 @@ with tab1:
         
         has_predicted = False
         if not df_existing.empty:
+            # Corrected pandas string chaining here
             has_predicted = not df_existing[(df_existing['User'].str.lower() == username.lower()) & 
-                                            (df_existing['Match'].str.strip().lower() == active_fixture['match'].strip().lower())].empty
+                                            (df_existing['Match'].str.strip().str.lower() == active_fixture['match'].strip().lower())].empty
 
         if has_predicted:
             st.success("You have already submitted a prediction for this match.")
@@ -89,20 +90,13 @@ with tab1:
                         }
                         try:
                             res = requests.post(WEBAPP_URL, data=json.dumps(payload))
-                            
-                            # This forces Python to crash and show an error if your Google URL is wrong
-                            res.raise_for_status() 
-                            
-                            st.success("Prediction successfully locked into the database! Refreshing...")
-                            
-                            # Pauses the app for 1.5 seconds so you can read the message
-                            time.sleep(1.5) 
+                            res.raise_for_status()
+                            st.success("Prediction submitted successfully!")
+                            time.sleep(1.5)
                             st.rerun()
-                            
                         except requests.exceptions.RequestException as e:
-                            st.error("Network error: Your prediction didn't go through.")
-                            st.info("Did you replace 'YOUR_DEPLOYMENT_ID' in the WEBAPP_URL on line 14?")
-                            st.write(f"Technical details: {e}")
+                            st.error(f"Network error: {e}")
+                            st.info("Check if your WEBAPP_URL deployment ID is correct.")
 
 # --- TAB 2: LIVE LEADERBOARDS & USER PICKS ---
 with tab2:
@@ -123,17 +117,18 @@ with tab2:
         st.write("No predictions submitted yet.")
     else:
         for m in df_existing['Match'].unique():
-            # Robust lookup using normalized string matching
+            # Corrected match lookup
             match_dict = next((item for item in FIXTURES if item["match"].strip().lower() == str(m).strip().lower()), None)
             st.subheader(f"Match: {m}")
             
-            # Secure Fallback: If match info is missing OR kickoff hasn't happened yet, HIDE the table
             if match_dict is None or current_time < match_dict['kickoff']:
                 st.warning("Predictions are hidden until kickoff.")
-                users = df_existing[(df_existing['Match'].str.strip().lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]['User'].tolist()
+                # Corrected pandas string chaining here
+                users = df_existing[(df_existing['Match'].str.strip().str.lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]['User'].tolist()
                 st.write(f"**Submitted by:** {', '.join(users) if users else 'None'}")
             else:
-                public_df = df_existing[(df_existing['Match'].str.strip().lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]
+                # Corrected pandas string chaining here
+                public_df = df_existing[(df_existing['Match'].str.strip().str.lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]
                 st.dataframe(public_df, use_container_width=True)
 
 # --- TAB 3: ADMIN PANEL ---
@@ -193,14 +188,16 @@ with tab3:
                         return pts
 
                     df_existing['Points'] = df_existing.apply(calc_row_points, axis=1)
-                    df_existing = df_existing[~((df_existing['User'] == 'ADMIN_RESULT') & (df_existing['Match'].str.strip().lower() == match_to_resolve.strip().lower()))]
+                    
+                    # Corrected pandas string chaining here
+                    df_existing = df_existing[~((df_existing['User'] == 'ADMIN_RESULT') & (df_existing['Match'].str.strip().str.lower() == match_to_resolve.strip().lower()))]
                     
                     new_admin_row = pd.DataFrame([{
                         "Timestamp": current_time.strftime("%Y-%m-%d %H:%M:%S"),
                         "User": "ADMIN_RESULT",
                         "Match": match_to_resolve,
                         "Team1_Score": act_t1,
-                        "Total2_Score": act_t2,
+                        "Team2_Score": act_t2,
                         "Pen_Winner": act_pen,
                         "MOTM": act_motm,
                         "Scorers": ", ".join(act_scorers) if act_scorers else "None",
@@ -214,8 +211,10 @@ with tab3:
                     full_payload = {"action": "overwrite", "rows": header_row + clean_rows}
                     
                     try:
-                        requests.post(WEBAPP_URL, data=json.dumps(full_payload))
+                        res = requests.post(WEBAPP_URL, data=json.dumps(full_payload))
+                        res.raise_for_status()
                         st.success("Match graded and brackets advanced!")
+                        time.sleep(1.5)
                         st.rerun()
-                    except Exception as e:
+                    except requests.exceptions.RequestException as e:
                         st.error(f"Error saving data: {e}")
