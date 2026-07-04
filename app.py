@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -11,7 +12,7 @@ st.set_page_config(page_title="World Cup Predictor", layout="wide")
 ist = pytz.timezone('Asia/Kolkata')
 current_time = datetime.now(ist)
 
-WEBAPP_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxnGXFa4VpEJFmIwcuOACjo32uKRb67DAU4luczLqgnkV-wplBnG1IxdK64TdnqCc6Z/exec"
 SHEET_ID = "1rzyPqXioFz2wj_Aby9kuFBafX0wsADvbM-QQTAeGJv8"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Predictions"
 
@@ -87,11 +88,21 @@ with tab1:
                             "scorers": ", ".join(scorers_list) if scorers_list else "None"
                         }
                         try:
-                            requests.post(WEBAPP_URL, data=json.dumps(payload))
-                            st.success("Prediction submitted!")
+                            res = requests.post(WEBAPP_URL, data=json.dumps(payload))
+                            
+                            # This forces Python to crash and show an error if your Google URL is wrong
+                            res.raise_for_status() 
+                            
+                            st.success("Prediction successfully locked into the database! Refreshing...")
+                            
+                            # Pauses the app for 1.5 seconds so you can read the message
+                            time.sleep(1.5) 
                             st.rerun()
-                        except Exception as e:
-                            st.error(f"Error submitting data: {e}")
+                            
+                        except requests.exceptions.RequestException as e:
+                            st.error("Network error: Your prediction didn't go through.")
+                            st.info("Did you replace 'YOUR_DEPLOYMENT_ID' in the WEBAPP_URL on line 14?")
+                            st.write(f"Technical details: {e}")
 
 # --- TAB 2: LIVE LEADERBOARDS & USER PICKS ---
 with tab2:
