@@ -7,7 +7,7 @@ import json
 from squads import SQUADS
 from fixtures import get_active_fixtures
 
-st.set_page_config(page_title="World Cup Predictor Suite", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="World Cup Predictor Suite", layout="wide")
 ist = pytz.timezone('Asia/Kolkata')
 current_time = datetime.now(ist)
 
@@ -30,7 +30,7 @@ for f in FIXTURES:
         active_fixture = f
         break
 
-st.title("🏆 2026 World Cup Bracket Predictor")
+st.title("2026 World Cup Bracket Predictor")
 st.sidebar.header("User Context Dashboard")
 username = st.sidebar.text_input("Enter your assigned participant handle:").strip()
 
@@ -41,7 +41,8 @@ if username == "ADMIN_RESULT":
     st.error("System configuration error: Restricted system token entry detected.")
     st.stop()
 
-tab1, tab2, tab3 = st.tabs(["Active Match Portal", "Global Analytics Grid", "Tournament Admin Node"])
+# Updated Tab Layout Names
+tab1, tab2, tab3 = st.tabs(["Prediction", "Leaderboards", "Admin Panel"])
 
 with tab1:
     if not active_fixture:
