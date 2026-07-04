@@ -7,7 +7,7 @@ import json
 from squads import SQUADS
 from fixtures import get_active_fixtures
 
-st.set_page_config(page_title="World Cup Predictor Suite", layout="wide")
+st.set_page_config(page_title="World Cup Predictor", layout="wide")
 ist = pytz.timezone('Asia/Kolkata')
 current_time = datetime.now(ist)
 
@@ -21,36 +21,37 @@ try:
 except Exception:
     df_existing = pd.DataFrame(columns=["Timestamp", "User", "Match", "Team1_Score", "Team2_Score", "Pen_Winner", "MOTM", "Scorers", "Points"])
 
-# Automatically resolve the complete active schedule timeline matrix
 FIXTURES = get_active_fixtures(df_existing)
 
-active_fixture = None
-for f in FIXTURES:
-    if current_time < f["kickoff"]:
-        active_fixture = f
-        break
-
-st.title("2026 World Cup Bracket Predictor")
-st.sidebar.header("User Context Dashboard")
-username = st.sidebar.text_input("Enter your assigned participant handle:").strip()
+st.title("World Cup Predictor")
+st.sidebar.header("User Profile")
+username = st.sidebar.text_input("Enter your name:").strip()
 
 if not username:
-    st.info("Enter your identifying handle via the sidebar profile panel to manage entries.")
+    st.info("Enter your name in the sidebar to continue.")
     st.stop()
 if username == "ADMIN_RESULT":
-    st.error("System configuration error: Restricted system token entry detected.")
+    st.error("Reserved username.")
     st.stop()
 
-# Updated Tab Layout Names
 tab1, tab2, tab3 = st.tabs(["Prediction", "Leaderboards", "Admin Panel"])
 
+# --- TAB 1: USER PREDICTIONS ---
 with tab1:
-    if not active_fixture:
-        st.success("All matches scheduled across active configurations have reached lock constraints.")
+    # Gather all matches that haven't kicked off yet
+    open_fixtures = [f for f in FIXTURES if current_time < f["kickoff"]]
+    
+    if not open_fixtures:
+        st.success("No open matches available for prediction right now.")
     else:
-        st.header(f"Upcoming Target Matchup: {active_fixture['match']}")
+        # Create a dropdown to let the user pick which match they want to predict
+        match_options = [f["match"] for f in open_fixtures]
+        selected_match_str = st.selectbox("Select Match to Predict", match_options)
+        
+        active_fixture = next(f for f in open_fixtures if f["match"] == selected_match_str)
+        
         time_left = active_fixture['kickoff'] - current_time
-        st.subheader(f"Window Closes In: {time_left.days}d {time_left.seconds // 3600}h {(time_left.seconds // 60) % 60}m")
+        st.write(f"**Kickoff in:** {time_left.days}d {time_left.seconds // 3600}h {(time_left.seconds // 60) % 60}m")
         
         has_predicted = False
         if not df_existing.empty:
@@ -58,25 +59,25 @@ with tab1:
                                             (df_existing['Match'] == active_fixture['match'])].empty
 
         if has_predicted:
-            st.success("Your prediction profile for this fixture is securely logged inside the database cluster.")
+            st.success("You have already submitted a prediction for this match.")
         else:
             team1, team2 = active_fixture['match'].split(" vs ")
-            pool_choices = sorted(SQUADS.get(team1, ["Player A", "Player B"]) + SQUADS.get(team2, ["Player C", "Player D"]))
+            pool_choices = sorted(SQUADS.get(team1, ["Player A"]) + SQUADS.get(team2, ["Player B"]))
             
-            with st.form("submission_entry_form", clear_on_submit=True):
+            with st.form("prediction_form", clear_on_submit=True):
                 col1, col2 = st.columns(2)
-                t1_score = col1.number_input(f"{team1} Projections", min_value=0, max_value=25, step=1, value=0)
-                t2_score = col2.number_input(f"{team2} Projections", min_value=0, max_value=25, step=1, value=0)
+                t1_score = col1.number_input(f"{team1} Score", min_value=0, max_value=25, step=1, value=0)
+                t2_score = col2.number_input(f"{team2} Score", min_value=0, max_value=25, step=1, value=0)
                 
-                pen_winner = st.selectbox("Sudden Death Shootout Backup Selection", ["None", team1, team2])
-                motm = st.selectbox("Select Expected Man of the Match Performance", pool_choices)
-                scorers_list = st.multiselect("Designate Projected Scorers Matrix", pool_choices)
+                pen_winner = st.selectbox("Penalty Winner (if draw)", ["None", team1, team2])
+                motm = st.selectbox("MOTM", pool_choices)
+                scorers_list = st.multiselect("Scorers", pool_choices)
                 
-                if st.form_submit_button("Transmit Prediction Matrix"):
+                if st.form_submit_button("Submit Prediction"):
                     if t1_score == t2_score and pen_winner == "None":
-                        st.error("Validation Halt: Draw projections demand an associated Shootout Backup choice.")
+                        st.error("Error: Draws require a penalty shootout winner.")
                     elif t1_score != t2_score and pen_winner != "None":
-                        st.error("Validation Halt: Conflict identified between structural winner and Shootout Backup allocation.")
+                        st.error("Error: Penalty winner selected but the score is not a draw.")
                     else:
                         payload = {
                             "user": username,
@@ -89,53 +90,66 @@ with tab1:
                         }
                         try:
                             requests.post(WEBAPP_URL, data=json.dumps(payload))
-                            st.success("Data cleanly transmitted to the Google Apps Script engine. Resetting matrix...")
+                            st.success("Prediction submitted!")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Transmission link processing failure: {e}")
+                            st.error(f"Error submitting data: {e}")
 
+# --- TAB 2: LIVE LEADERBOARDS & USER PICKS ---
 with tab2:
-    st.header("Public Distribution Framework")
+    st.header("Leaderboard")
+    public_leaderboard = df_existing[df_existing['User'] != 'ADMIN_RESULT']
+    
+    if not public_leaderboard.empty and "Points" in public_leaderboard.columns:
+        leaderboard = public_leaderboard.groupby('User')['Points'].sum().reset_index()
+        leaderboard = leaderboard.sort_values(by='Points', ascending=False)
+        st.dataframe(leaderboard, use_container_width=True)
+    else:
+        st.info("No scores calculated yet.")
+        
+    st.divider()
+    
+    st.header("All User Predictions")
     if df_existing.empty:
-        st.write("Awaiting initial participant transactions.")
+        st.write("No predictions submitted yet.")
     else:
         for m in df_existing['Match'].unique():
             match_dict = next((item for item in FIXTURES if item["match"] == m), None)
-            st.subheader(f"Fixture Focus: {m}")
+            st.subheader(f"Match: {m}")
             
             if match_dict and current_time < match_dict['kickoff']:
-                st.warning("Content masked. Lock conditions remain active until kickoff threshold is met.")
+                st.warning("Predictions are hidden until kickoff.")
                 users = df_existing[(df_existing['Match'] == m) & (df_existing['User'] != 'ADMIN_RESULT')]['User'].tolist()
-                st.write(f"**Entries Verified:** {', '.join(users) if users else 'None yet'}")
+                st.write(f"**Submitted by:** {', '.join(users) if users else 'None'}")
             else:
-                st.success("Kickoff confirmed. Showing all user picks.")
                 public_df = df_existing[(df_existing['Match'] == m) & (df_existing['User'] != 'ADMIN_RESULT')]
                 st.dataframe(public_df, use_container_width=True)
 
+# --- TAB 3: ADMIN PANEL ---
 with tab3:
-    st.header("Tournament Operations Node")
-    admin_pass = st.text_input("Operational Authentication Key", type="password")
+    st.header("Admin Panel")
+    admin_pass = st.text_input("Admin Password", type="password")
     
     if admin_pass == "worldcup2026":
         past_fixtures = [f['match'] for f in FIXTURES if current_time > f['kickoff']]
         if not past_fixtures:
-            st.info("System logs show no fixture items have successfully cleared lock deadlines yet.")
+            st.info("No matches have kicked off yet.")
         else:
-            match_to_resolve = st.selectbox("Choose Targeted Concluded Fixture to Resolve", past_fixtures)
+            match_to_resolve = st.selectbox("Select Match to Grade", past_fixtures)
             team1, team2 = match_to_resolve.split(" vs ")
             
             col1, col2 = st.columns(2)
-            act_t1 = col1.number_input(f"Official Regular Time {team1} Score", min_value=0, step=1, value=0)
-            act_t2 = col2.number_input(f"Official Regular Time {team2} Score", min_value=0, step=1, value=0)
-            act_pen = st.selectbox("Official Penalty Shootout Winner", ["None", team1, team2])
+            act_t1 = col1.number_input(f"{team1} Final Score", min_value=0, step=1, value=0)
+            act_t2 = col2.number_input(f"{team2} Final Score", min_value=0, step=1, value=0)
+            act_pen = st.selectbox("Penalty Winner (if draw)", ["None", team1, team2])
             
             match_pool = sorted(SQUADS.get(team1, ["Player A"]) + SQUADS.get(team2, ["Player B"]))
-            act_motm = st.selectbox("Official MVP Selection", match_pool)
-            act_scorers = st.multiselect("Official Match Scorers Collection", match_pool)
+            act_motm = st.selectbox("Official MOTM", match_pool)
+            act_scorers = st.multiselect("Official Scorers", match_pool)
             
-            if st.button("Commit Resolution & Advance Brackets"):
+            if st.button("Submit Official Results"):
                 if df_existing[df_existing['User'] != 'ADMIN_RESULT'].empty:
-                    st.error("Point calculation execution abandoned: Empty target array.")
+                    st.error("No users to score.")
                 else:
                     def calc_row_points(row):
                         if row['User'] == 'ADMIN_RESULT':
@@ -190,15 +204,7 @@ with tab3:
                     
                     try:
                         requests.post(WEBAPP_URL, data=json.dumps(full_payload))
-                        st.success("Target match data recorded! Downstream brackets calculated. Reloading application layer...")
+                        st.success("Match graded and brackets advanced!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Failed to post to cloud endpoint: {e}")
-                
-    st.divider()
-    st.subheader("Global Standings Master List")
-    public_leaderboard = df_existing[df_existing['User'] != 'ADMIN_RESULT']
-    if not public_leaderboard.empty and "Points" in public_leaderboard.columns:
-        leaderboard = public_leaderboard.groupby('User')['Points'].sum().reset_index()
-        leaderboard = leaderboard.sort_values(by='Points', ascending=False)
-        st.dataframe(leaderboard, use_container_width=True)
+                        st.error(f"Error saving data: {e}")
