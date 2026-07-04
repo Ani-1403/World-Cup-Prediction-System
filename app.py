@@ -38,13 +38,11 @@ tab1, tab2, tab3 = st.tabs(["Prediction", "Leaderboards", "Admin Panel"])
 
 # --- TAB 1: USER PREDICTIONS ---
 with tab1:
-    # Gather all matches that haven't kicked off yet
     open_fixtures = [f for f in FIXTURES if current_time < f["kickoff"]]
     
     if not open_fixtures:
         st.success("No open matches available for prediction right now.")
     else:
-        # Create a dropdown to let the user pick which match they want to predict
         match_options = [f["match"] for f in open_fixtures]
         selected_match_str = st.selectbox("Select Match to Predict", match_options)
         
@@ -56,7 +54,7 @@ with tab1:
         has_predicted = False
         if not df_existing.empty:
             has_predicted = not df_existing[(df_existing['User'].str.lower() == username.lower()) & 
-                                            (df_existing['Match'] == active_fixture['match'])].empty
+                                            (df_existing['Match'].str.strip().lower() == active_fixture['match'].strip().lower())].empty
 
         if has_predicted:
             st.success("You have already submitted a prediction for this match.")
@@ -114,15 +112,17 @@ with tab2:
         st.write("No predictions submitted yet.")
     else:
         for m in df_existing['Match'].unique():
-            match_dict = next((item for item in FIXTURES if item["match"] == m), None)
+            # Robust lookup using normalized string matching
+            match_dict = next((item for item in FIXTURES if item["match"].strip().lower() == str(m).strip().lower()), None)
             st.subheader(f"Match: {m}")
             
-            if match_dict and current_time < match_dict['kickoff']:
+            # Secure Fallback: If match info is missing OR kickoff hasn't happened yet, HIDE the table
+            if match_dict is None or current_time < match_dict['kickoff']:
                 st.warning("Predictions are hidden until kickoff.")
-                users = df_existing[(df_existing['Match'] == m) & (df_existing['User'] != 'ADMIN_RESULT')]['User'].tolist()
+                users = df_existing[(df_existing['Match'].str.strip().lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]['User'].tolist()
                 st.write(f"**Submitted by:** {', '.join(users) if users else 'None'}")
             else:
-                public_df = df_existing[(df_existing['Match'] == m) & (df_existing['User'] != 'ADMIN_RESULT')]
+                public_df = df_existing[(df_existing['Match'].str.strip().lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]
                 st.dataframe(public_df, use_container_width=True)
 
 # --- TAB 3: ADMIN PANEL ---
@@ -154,7 +154,7 @@ with tab3:
                     def calc_row_points(row):
                         if row['User'] == 'ADMIN_RESULT':
                             return 0
-                        if row['Match'] != match_to_resolve:
+                        if str(row['Match']).strip().lower() != match_to_resolve.strip().lower():
                             return row['Points']
                         
                         pts = 0
@@ -182,14 +182,14 @@ with tab3:
                         return pts
 
                     df_existing['Points'] = df_existing.apply(calc_row_points, axis=1)
-                    df_existing = df_existing[~((df_existing['User'] == 'ADMIN_RESULT') & (df_existing['Match'] == match_to_resolve))]
+                    df_existing = df_existing[~((df_existing['User'] == 'ADMIN_RESULT') & (df_existing['Match'].str.strip().lower() == match_to_resolve.strip().lower()))]
                     
                     new_admin_row = pd.DataFrame([{
                         "Timestamp": current_time.strftime("%Y-%m-%d %H:%M:%S"),
                         "User": "ADMIN_RESULT",
                         "Match": match_to_resolve,
                         "Team1_Score": act_t1,
-                        "Team2_Score": act_t2,
+                        "Total2_Score": act_t2,
                         "Pen_Winner": act_pen,
                         "MOTM": act_motm,
                         "Scorers": ", ".join(act_scorers) if act_scorers else "None",
