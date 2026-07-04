@@ -26,9 +26,7 @@ To maintain competition integrity, the platform processes point allocation throu
 * **Clutch Draw (3 Points):** Awarded if a user correctly predicts a tie score and correctly selects the subsequent penalty shootout winner.
 * **Partial Draw (1 Point):** Awarded if a user correctly predicts that the match ends in a tie, but misses the team that ultimately advances via the shootout.
 
-### 3. Bonus Categories
-* **Man of the Match (2 Points):** Awarded for an exact match against the official player of the match. Input must follow a single-name syntax (Last name only).
-* **Goalscorers (1 Point per correct goal):** Multi-tiered allocation based on comma-separated values. If a player is predicted to score multiple times, their name must be declared explicitly for each predicted goal (e.g., David, David).
+
 
 ---
 
