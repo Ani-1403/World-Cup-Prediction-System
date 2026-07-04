@@ -23,14 +23,78 @@ FIXTURES = [
 ]
 
 SQUADS = {
-    "Canada": ["Dayne St. Clair", "Maxime Crepeau", "Owen Goodman", "Alistair Johnston", "Derek Cornelius", "Richie Laryea", "Niko Sigur", "Joel Waterman", "Moise Bombito", "Alphonso Davies", "Stephen Eustaquio", "Ismael Kone", "Tajon Buchanan", "Mathieu Choiniere", "Jacob Shaffelburg", "Jonathan Osorio", "Jonathan David", "Cyle Larin", "Tani Oluwaseyi"],
-    "Morocco": ["Yassine Bounou", "Munir El Kajoui", "Achraf Hakimi", "Noussair Mazraoui", "Nayef Aguerd", "Sofyan Amrabat", "Azzedine Ounahi", "Bilal El Khannouss", "Soufiane Rahimi", "Brahim Diaz", "Abde Ezzalzouli", "Ayoub El Kaabi"],
-    "Paraguay": ["Carlos Coronel", "Gustavo Gomez", "Junior Alonso", "Fabian Balbuena", "Miguel Almiron", "Mathias Villasanti", "Diego Gomez", "Julio Enciso", "Antonio Sanabria", "Ramon Sosa"],
-    "France": ["Mike Maignan", "Brice Samba", "William Saliba", "Dayot Upamecano", "Ibrahima Konate", "Jules Kounde", "Theo Hernandez", "N'Golo Kante", "Aurelien Tchouameni", "Eduardo Camavinga", "Kylian Mbappe", "Antoine Griezmann", "Ousmane Dembele", "Marcus Thuram", "Bradley Barcola"],
-    "Brazil": ["Alisson Becker", "Ederson Moraes", "Marquinhos", "Eder Militao", "Gabriel Magalhaes", "Danilo", "Bruno Guimaraes", "Lucas Paqueta", "Joao Gomes", "Vinicius Junior", "Rodrygo Goes", "Endrick", "Raphinha", "Gabriel Martinelli", "Savinho"],
-    "Norway": ["Orjan Nyland", "Leo Ostigard", "Julian Ryerson", "Kristoffer Ajer", "Martin Odegaard", "Patrick Berg", "Sander Berge", "Antonio Nusa", "Erling Haaland", "Alexander Sorloth", "Jorgen Strand Larsen"],
-    "Mexico": ["Luis Malagon", "Cesar Montes", "Johan Vasquez", "Jorge Sanchez", "Edson Alvarez", "Luis Chavez", "Luis Romo", "Orbelin Pineda", "Santiago Gimenez", "Julian Quinones", "Uriel Antuna", "Cesar Huerta"],
-    "England": ["Jordan Pickford", "Aaron Ramsdale", "John Stones", "Kyle Walker", "Kieran Trippier", "Marc Guehi", "Trent Alexander-Arnold", "Declan Rice", "Jude Bellingham", "Cole Palmer", "Harry Kane", "Bukayo Saka", "Phil Foden", "Ollie Watkins", "Anthony Gordon"]
+    "Canada": [
+        "Dayne St. Clair", "Maxime Crepeau", "Owen Goodman", "Alistair Johnston", 
+        "Derek Cornelius", "Richie Laryea", "Niko Sigur", "Joel Waterman", 
+        "Luc De Fougerolles", "Moise Bombito", "Alphonso Davies", "Alfie Jones",
+        "Stephen Eustaquio", "Ismael Kone", "Tajon Buchanan", "Mathieu Choiniere", 
+        "Ali Ahmed", "Nathan Saliba", "Liam Miller", "Marcelo Flores", 
+        "Jacob Shaffelburg", "Jonathan Osorio", "Jonathan David", "Cyle Larin", 
+        "Tani Oluwaseyi", "Promise David"
+    ],
+    "Morocco": [
+        "Yassine Bounou", "Munir El Kajoui", "Ahmed Reda Tagnaouti", "Achraf Hakimi", 
+        "Noussair Mazraoui", "Nayef Aguerd", "Zakaria El Ouahdi", "Chadi Riad", 
+        "Youssef Belammari", "Redouane Halhal", "Anass Salah-Eddine", "Marwane Saadane", 
+        "Abdel Abqar", "Sofyan Amrabat", "Ayyoub Bouaddi", "Chemsdine Talbi", 
+        "Azzedine Ounahi", "Ismael Saibari", "Samir El Mourabet", "Gessime Yassine", 
+        "Bilal El Khannouss", "Neil El Aynaoui", "Soufiane Rahimi", "Brahim Diaz", 
+        "Abde Ezzalzouli", "Ayoub El Kaabi"
+    ],
+    "Paraguay": [
+        "Carlos Coronel", "Santiago Rojas", "Alfredo Aguilar", "Gustavo Gomez", 
+        "Junior Alonso", "Fabian Balbuena", "Omar Alderete", "Robert Rojas", 
+        "Santiago Arzamendia", "Juan Escobar", "Alexis Duarte", "Fabrizio Peralta",
+        "Miguel Almiron", "Mathias Villasanti", "Diego Gomez", "Richard Sanchez", 
+        "Andres Cubas", "Alejandro Romero Gamarra", "Braian Ojeda", "Alvaro Campuzano",
+        "Julio Enciso", "Antonio Sanabria", "Gabriel Avalos", "Adam Bareiro", 
+        "Derlis Gonzalez", "Ramon Sosa"
+    ],
+    "France": [
+        "Mike Maignan", "Brice Samba", "Alphonse Areola", "William Saliba", 
+        "Dayot Upamecano", "Ibrahima Konate", "Jules Kounde", "Theo Hernandez", 
+        "Benjamin Pavard", "Jonathan Clauss", "Ferland Mendy", "Lucas Hernandez",
+        "N'Golo Kante", "Aurelien Tchouameni", "Eduardo Camavinga", "Warren Zaire-Emery", 
+        "Youssouf Fofana", "Adrien Rabiot", "Mattéo Guendouzi", "Kylian Mbappe", 
+        "Antoine Griezmann", "Ousmane Dembele", "Marcus Thuram", "Olivier Giroud", 
+        "Kingsley Coman", "Bradley Barcola"
+    ],
+    "Brazil": [
+        "Alisson Becker", "Ederson Moraes", "Bento", "Marquinhos", 
+        "Eder Militao", "Gabriel Magalhaes", "Danilo", "Guilherme Arana", 
+        "Yan Couto", "Lucas Beraldo", "Bremer", "Murilo",
+        "Bruno Guimaraes", "Lucas Paqueta", "Douglas Luiz", "Joao Gomes", 
+        "Andreas Pereira", "Ederson dos Santos", "Gerson", "Vinicius Junior", 
+        "Rodrygo Goes", "Endrick", "Raphinha", "Gabriel Martinelli", 
+        "Savinho", "Pedro"
+    ],
+    "Norway": [
+        "Orjan Nyland", "Mathias Dyngeland", "Egil Selvik", "Leo Ostigard", 
+        "Julian Ryerson", "Kristoffer Ajer", "Andreas Hanche-Olsen", "Marcus Pedersen", 
+        "David Moller Wolfe", "Jesper Daland", "Stian Gregersen", "Fredrik Bjorkan",
+        "Martin Odegaard", "Patrick Berg", "Sander Berge", "Kristian Thorstvedt", 
+        "Hugo Vetlesen", "Osame Sahraoui", "Antonio Nusa", "Aron Donnum", 
+        "Morten Thorsby", "Erling Haaland", "Alexander Sorloth", "Jorgen Strand Larsen", 
+        "David Datro Fofana", "Erik Botheim"
+    ],
+    "Mexico": [
+        "Luis Malagon", "Julio Gonzalez", "Raul Rangel", "Cesar Montes", 
+        "Johan Vasquez", "Jorge Sanchez", "Gerardo Arteaga", "Israel Reyes", 
+        "Bryan Gonzalez", "Jesus Orozco", "Jesus Gallardo", "Victor Guzman",
+        "Edson Alvarez", "Luis Chavez", "Erick Sanchez", "Luis Romo", 
+        "Orbelin Pineda", "Carlos Rodriguez", "Marcelo Flores", "Jordi Cortizo",
+        "Santiago Gimenez", "Julian Quinones", "Uriel Antuna", "Alexis Vega", 
+        "Cesar Huerta", "Henry Martin"
+    ],
+    "England": [
+        "Jordan Pickford", "Aaron Ramsdale", "Dean Henderson", "John Stones", 
+        "Kyle Walker", "Kieran Trippier", "Joe Gomez", "Ezri Konsa", 
+        "Marc Guehi", "Trent Alexander-Arnold", "Levi Colwill", "Jarrad Branthwaite",
+        "Declan Rice", "Jude Bellingham", "Conor Gallagher", "Kobbie Mainoo", 
+        "Adam Wharton", "Cole Palmer", "James Maddison", "Curtis Jones",
+        "Harry Kane", "Bukayo Saka", "Phil Foden", "Ollie Watkins", 
+        "Jarrod Bowen", "Anthony Gordon"
+    ]
 }
 
 # Dynamic Active Fixture Selector
