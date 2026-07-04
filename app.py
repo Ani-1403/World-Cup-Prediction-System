@@ -143,7 +143,7 @@ with tab2:
                 display_df = public_df.drop(columns=["MOTM", "Scorers", "Timestamp"], errors='ignore')
                 st.dataframe(display_df, use_container_width=True)
 
--
+
 with tab3:
     st.header("Admin Panel")
     admin_pass = st.text_input("Admin Password", type="password")
