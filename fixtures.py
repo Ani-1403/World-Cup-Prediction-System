@@ -4,11 +4,7 @@ import pytz
 
 ist = pytz.timezone('Asia/Kolkata')
 
-# 1. Structural Bracket Definition
-# Kickoff times converted from FIFA's official ET (Eastern Daylight Time,
-# UTC-4 in July) schedule to IST (UTC+5:30): ET + 9:30. Several of these
-# cross midnight into the next calendar day in IST - double check the date,
-# not just the time, when cross-referencing the official schedule.
+
 RO16_DEFS = [
     {"id": "R16_1", "match": "Canada vs Morocco", "kickoff": ist.localize(datetime(2026, 7, 4, 22, 30)), "next": "QF1_A"},      # Jul 4, 1:00 PM ET
     {"id": "R16_2", "match": "Paraguay vs France", "kickoff": ist.localize(datetime(2026, 7, 5, 2, 30)), "next": "QF1_B"},      # Jul 4, 5:00 PM ET
