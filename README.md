@@ -19,13 +19,13 @@ To maintain competition integrity, the platform processes point allocation throu
 
 ### 1. Match Outcomes
 * **Exact Score Match (3 Points):** Awarded if a user correctly predicts the precise final score line at the conclusion of the match (including Extra Time if played).
-* **Correct Outcome (2 Points):** Awarded if a user correctly identifies the winning team, but misses the exact score line.
+* **Correct Outcome (2 Points):** Awarded if a user correctly identifies the winning team, but misses the exact score line(non draw)
 
 ### 2. Draw and Penalty Shootout Conditions
 * **Draw Definition:** If a match goes to a penalty shootout, the score line at the end of 120 minutes is structurally a tie.
-* **Clutch Draw (3 Points):** Awarded if a user correctly predicts a tie score and correctly selects the subsequent penalty shootout winner.
-* **Partial Draw (1 Point):** Awarded if a user correctly predicts that the match ends in a tie, but misses the team that ultimately advances via the shootout.
-
+* **Clutch Draw (3 Points):** Awarded if a user correctly predicts the tie score.
+* **Partial Draw (1 Point):** Awarded if a user correctly predicts that the match ends in a tie, but misses the exact score.
+* **Penalty Bonus (1 Point):** Awarded if a user predicts who wins the penalty shootout after predicting a draw.
 
 
 ---
