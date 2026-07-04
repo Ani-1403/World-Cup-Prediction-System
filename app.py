@@ -24,17 +24,34 @@ except Exception:
 FIXTURES = get_active_fixtures(df_existing)
 
 st.title("World Cup Predictor")
-st.sidebar.header("User Profile")
-username = st.sidebar.text_input("Enter your name:").strip()
 
-if not username:
-    st.info("Enter your name in the sidebar to continue.")
+
+if 'username' not in st.session_state:
+    st.session_state.username = None
+
+st.sidebar.header("User Profile")
+
+# If the user hasn't logged in yet, show the input box
+if not st.session_state.username:
+    input_name = st.sidebar.text_input("Enter your name:").strip()
+    if st.sidebar.button("Login"):
+        if not input_name:
+            st.sidebar.error("Name cannot be empty.")
+        elif input_name == "ADMIN_RESULT":
+            st.sidebar.error("Reserved username.")
+        else:
+            st.session_state.username = input_name
+            st.rerun()
+    st.info("Enter your name in the sidebar and click Login to continue.")
     st.stop()
-if username == "ADMIN_RESULT":
-    st.error("Reserved username.")
-    st.stop()
+else:
+    # If they are logged in, lock the name and hide the input box
+    st.sidebar.success(f"Logged in as: **{st.session_state.username}**")
+    
+username = st.session_state.username
 
 tab1, tab2, tab3 = st.tabs(["Prediction", "Leaderboards", "Admin Panel"])
+
 
 with tab1:
     open_fixtures = [f for f in FIXTURES if current_time < f["kickoff"]]
@@ -60,37 +77,40 @@ with tab1:
         else:
             team1, team2 = active_fixture['match'].split(" vs ")
             
-            with st.form("prediction_form", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                t1_score = col1.number_input(f"{team1} Score", min_value=0, max_value=25, step=1, value=0)
-                t2_score = col2.number_input(f"{team2} Score", min_value=0, max_value=25, step=1, value=0)
-                
-                pen_winner = st.selectbox("Penalty Winner (if draw)", ["None", team1, team2])
-                
-                if st.form_submit_button("Submit Prediction"):
-                    if t1_score == t2_score and pen_winner == "None":
-                        st.error("Error: Draws require a penalty shootout winner.")
-                    elif t1_score != t2_score and pen_winner != "None":
-                        st.error("Error: Penalty winner selected but the score is not a draw.")
-                    else:
-                        payload = {
-                            "user": username,
-                            "match": active_fixture['match'],
-                            "t1_score": int(t1_score),
-                            "t2_score": int(t2_score),
-                            "pen_winner": pen_winner,
-                            "motm": "N/A",      # Hidden to preserve Google Sheet columns
-                            "scorers": "N/A"    # Hidden to preserve Google Sheet columns
-                        }
-                        try:
-                            res = requests.post(WEBAPP_URL, data=json.dumps(payload))
-                            res.raise_for_status()
-                            st.success("Prediction submitted successfully!")
-                            time.sleep(1.5)
-                            st.rerun()
-                        except requests.exceptions.RequestException as e:
-                            st.error(f"Network error: {e}")
-                            st.info("Check if your WEBAPP_URL deployment ID is correct.")
+            # Removed the st.form to allow real-time UI updates
+            col1, col2 = st.columns(2)
+            t1_score = col1.number_input(f"{team1} Score", min_value=0, max_value=25, step=1, value=0)
+            t2_score = col2.number_input(f"{team2} Score", min_value=0, max_value=25, step=1, value=0)
+            
+            # Dynamic Penalty Logic: Only show if it's a draw
+            pen_winner = "None"
+            if t1_score == t2_score:
+                pen_winner = st.selectbox("Penalty Winner (Required for Draws)", ["None", team1, team2])
+            else:
+                st.info("Match is not a draw. Penalty selection disabled.")
+            
+            if st.button("Submit Prediction"):
+                if t1_score == t2_score and pen_winner == "None":
+                    st.error("Error: Draws require a penalty shootout winner.")
+                else:
+                    payload = {
+                        "user": username,
+                        "match": active_fixture['match'],
+                        "t1_score": int(t1_score),
+                        "t2_score": int(t2_score),
+                        "pen_winner": pen_winner,
+                        "motm": "N/A",
+                        "scorers": "N/A"
+                    }
+                    try:
+                        res = requests.post(WEBAPP_URL, data=json.dumps(payload))
+                        res.raise_for_status()
+                        st.success("Prediction submitted successfully!")
+                        time.sleep(1.5)
+                        st.rerun()
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"Network error: {e}")
+                        st.info("Check if your WEBAPP_URL deployment ID is correct.")
 
 
 with tab2:
@@ -120,11 +140,10 @@ with tab2:
                 st.write(f"**Submitted by:** {', '.join(users) if users else 'None'}")
             else:
                 public_df = df_existing[(df_existing['Match'].str.strip().str.lower() == str(m).strip().lower()) & (df_existing['User'] != 'ADMIN_RESULT')]
-                # Hide the MOTM and Scorers columns from the public view
                 display_df = public_df.drop(columns=["MOTM", "Scorers", "Timestamp"], errors='ignore')
                 st.dataframe(display_df, use_container_width=True)
 
-
+-
 with tab3:
     st.header("Admin Panel")
     admin_pass = st.text_input("Admin Password", type="password")
@@ -140,7 +159,13 @@ with tab3:
             col1, col2 = st.columns(2)
             act_t1 = col1.number_input(f"{team1} Final Score", min_value=0, step=1, value=0)
             act_t2 = col2.number_input(f"{team2} Final Score", min_value=0, step=1, value=0)
-            act_pen = st.selectbox("Penalty Winner (if draw)", ["None", team1, team2])
+            
+            # Dynamic Admin Penalty Logic
+            act_pen = "None"
+            if act_t1 == act_t2:
+                act_pen = st.selectbox("Penalty Winner (if draw)", ["None", team1, team2])
+            else:
+                st.info("Match is not a draw. Penalty selection disabled.")
             
             if st.button("Submit Official Results"):
                 if df_existing[df_existing['User'] != 'ADMIN_RESULT'].empty:
