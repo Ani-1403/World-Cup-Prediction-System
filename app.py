@@ -19,46 +19,6 @@ EXPECTED_COLS = [
     "Pen_Winner", "MOTM", "Scorers", "Points"
 ]
 
-# Flag emoji built from explicit Unicode codepoints so they render
-# in every Streamlit widget including selectbox options.
-# Regional Indicator letters: U+1F1E6 = A ... U+1F1FF = Z
-# Two RIs side by side form a country flag, e.g. BR = U+1F1E7 U+1F1F7
-def _ri(c: str) -> str:
-    return chr(0x1F1E6 + ord(c.upper()) - ord("A"))
-
-FLAGS = {
-    "Morocco":     _ri("M") + _ri("A"),
-    "France":      _ri("F") + _ri("R"),
-    "Brazil":      _ri("B") + _ri("R"),
-    "Norway":      _ri("N") + _ri("O"),
-    "Mexico":      _ri("M") + _ri("X"),
-    # England: subdivision flag sequence (U+1F3F4 + tag chars gb-eng + cancel tag)
-    "England":     "\U0001F3F4\U000E0067\U000E0062\U000E0065\U000E006E\U000E0067\U000E007F",
-    "Portugal":    _ri("P") + _ri("T"),
-    "Spain":       _ri("E") + _ri("S"),
-    "USA":         _ri("U") + _ri("S"),
-    "Belgium":     _ri("B") + _ri("E"),
-    "Argentina":   _ri("A") + _ri("R"),
-    "Egypt":       _ri("E") + _ri("G"),
-    "Switzerland": _ri("C") + _ri("H"),
-    "Colombia":    _ri("C") + _ri("O"),
-    "Canada":      _ri("C") + _ri("A"),
-    "Paraguay":    _ri("P") + _ri("Y"),
-}
-
-
-def f(team: str) -> str:
-    """Flag + team name, safe to use anywhere including selectbox options."""
-    return f"{FLAGS.get(team, '')} {team}".strip()
-
-
-def f_match(match_str: str) -> str:
-    """'Brazil vs Norway' -> '🇧🇷 Brazil vs 🇳🇴 Norway'."""
-    if " vs " not in match_str:
-        return match_str
-    t1, t2 = match_str.split(" vs ", 1)
-    return f"{f(t1.strip())} vs {f(t2.strip())}"
-
 # Matches played before MOTM feature existed — no squad dropdowns
 MOTM_DISABLED_MATCHES = {
     "canada vs morocco",
@@ -186,13 +146,13 @@ tab1, tab2, tab3 = st.tabs(["Prediction", "Leaderboard", "Admin Panel"])
 # TAB 1 — Prediction
 # ══════════════════════════════════════════════════════════════════════════
 with tab1:
-    open_fixtures = [f for f in FIXTURES if current_time < f["kickoff"]]
+    open_fixtures = [fix for fix in FIXTURES if current_time < fix["kickoff"]]
 
     if not open_fixtures:
         st.success("No open matches available for prediction right now.")
     else:
-        match_options = [f"{f_match(fix['match'])}  |  {fix['round']}" for fix in open_fixtures]
-        selected_str  = st.selectbox("Select Match to Predict", match_options)
+        match_options  = [f"{fix['match']}  |  {fix['round']}" for fix in open_fixtures]
+        selected_str   = st.selectbox("Select Match to Predict", match_options)
         active_fixture = open_fixtures[match_options.index(selected_str)]
         match_name     = active_fixture["match"]
         match_key      = match_name.strip().lower()
@@ -203,7 +163,7 @@ with tab1:
         mins  = (time_left.seconds // 60) % 60
         st.write(f"**Kickoff in:** {days}d {hours}h {mins}m")
 
-        # Find existing prediction
+        # Find existing prediction for this user + match
         existing_row = None
         if not df_existing.empty:
             mask = (
@@ -221,28 +181,24 @@ with tab1:
 
         team1, team2 = match_name.split(" vs ")
 
-        # ── Already predicted: show summary + edit button ────────────────
+        # ── Already predicted: show summary + edit button ─────────────────
         if has_predicted and st.session_state.editing_match != match_name:
-            # Use markdown so the flag emojis actually render
-            st.success(f"You have already submitted a prediction for this match.")
+            st.success("You have already submitted a prediction for this match.")
             if existing_row is not None:
                 t1_p   = int(existing_row["Team1_Score"]) if pd.notna(existing_row["Team1_Score"]) else 0
                 t2_p   = int(existing_row["Team2_Score"]) if pd.notna(existing_row["Team2_Score"]) else 0
                 pen_p  = str(existing_row.get("Pen_Winner", "None")).strip()
                 motm_p = str(existing_row.get("MOTM", "N/A")).strip()
 
-                pen_str  = f" &nbsp;·&nbsp; Pens: **{f(pen_p)}**"  if pen_p  not in ("None","N/A","nan","") else ""
-                motm_str = f" &nbsp;·&nbsp; MOTM: **{motm_p}**"     if motm_p not in ("N/A","nan","")       else ""
-                st.markdown(
-                    f"Your pick: **{f(team1)} {t1_p} – {t2_p} {f(team2)}**"
-                    f"{pen_str}{motm_str}",
-                    unsafe_allow_html=True,
-                )
+                pen_str  = f"  |  Pens: **{pen_p}**"  if pen_p  not in ("None", "N/A", "nan", "") else ""
+                motm_str = f"  |  MOTM: **{motm_p}**" if motm_p not in ("N/A", "nan", "")         else ""
+                st.info(f"Your pick: **{team1} {t1_p} – {t2_p} {team2}**{pen_str}{motm_str}")
+
             if st.button("Edit my prediction"):
                 st.session_state.editing_match = match_name
                 st.rerun()
 
-        # ── Prediction / edit form ────────────────────────────────────────
+        # ── Prediction / edit form ─────────────────────────────────────────
         else:
             is_edit = existing_row is not None
 
@@ -252,29 +208,25 @@ with tab1:
             default_motm = str(existing_row.get("MOTM", "N/A")).strip()        if is_edit else "N/A"
 
             if is_edit:
-                st.info(f"Editing your prediction for **{f_match(match_name)}**. Submit to overwrite.")
+                st.info(f"Editing your prediction for **{match_name}**. Submit to overwrite.")
 
-            # Score inputs — flag in the label renders fine in st.number_input
             col1, col2 = st.columns(2)
             t1_score = col1.number_input(
-                f"{f(team1)} Score", min_value=0, max_value=25, step=1, value=default_t1
+                f"{team1} Score", min_value=0, max_value=25, step=1, value=default_t1
             )
             t2_score = col2.number_input(
-                f"{f(team2)} Score", min_value=0, max_value=25, step=1, value=default_t2
+                f"{team2} Score", min_value=0, max_value=25, step=1, value=default_t2
             )
 
-            # Penalty winner — selectbox uses plain team names only
+            # Penalty winner
             pen_winner = "None"
             if t1_score == t2_score:
-                pen_opts   = ["None", f(team1), f(team2)]
-                pen_map    = {"None": "None", f(team1): team1, f(team2): team2}
-                pen_def    = f(default_pen) if default_pen in (team1, team2) else "None"
-                pen_idx    = pen_opts.index(pen_def) if pen_def in pen_opts else 0
-                pen_sel    = st.selectbox(
+                pen_opts  = ["None", team1, team2]
+                pen_idx   = pen_opts.index(default_pen) if default_pen in pen_opts else 0
+                pen_winner = st.selectbox(
                     "Penalty Shootout Winner (required for draws)",
                     pen_opts, index=pen_idx
                 )
-                pen_winner = pen_map.get(pen_sel, "None")
             else:
                 st.caption("Match is not a draw — penalty selection disabled.")
 
@@ -283,18 +235,17 @@ with tab1:
             if match_key not in MOTM_DISABLED_MATCHES:
                 squad1, squad2 = get_combined_squad(team1, team2)
                 st.markdown("---")
-                st.markdown(f"**MOTM prediction (+1 bonus point)**")
-                st.markdown(
-                    f"Pick one player from either {f(team1)} or {f(team2)}. "
-                    "Selecting from one team disables the other.",
-                    unsafe_allow_html=True,
+                st.markdown("**MOTM prediction (+1 bonus point)**")
+                st.caption(
+                    f"Pick one player from either {team1} or {team2}. "
+                    "Selecting from one team disables the other."
                 )
 
                 NO_PICK = "-- No pick --"
                 t1_opts = [NO_PICK] + squad1
                 t2_opts = [NO_PICK] + squad2
 
-                # Restore saved pick when editing
+                # Restore saved MOTM pick when editing
                 if default_motm in squad1:
                     t1_def, t2_def = t1_opts.index(default_motm), 0
                 elif default_motm in squad2:
@@ -304,46 +255,39 @@ with tab1:
 
                 mc1, mc2 = st.columns(2)
 
-                # Team 1 dropdown — disabled if team 2 already has a pick
+                # Disabled when the other team already has a pick
                 t1_motm = mc1.selectbox(
-                    f"{f(team1)}",
-                    t1_opts,
+                    team1, t1_opts,
                     index=t1_def,
                     key="motm_t1",
-                    disabled=(t2_def > 0),   # disabled when restoring a team2 pick
+                    disabled=(t2_def > 0),
                 )
-
-                # Team 2 dropdown — disabled if team 1 already has a pick
                 t2_motm = mc2.selectbox(
-                    f"{f(team2)}",
-                    t2_opts,
+                    team2, t2_opts,
                     index=t2_def,
                     key="motm_t2",
-                    disabled=(t1_def > 0),   # disabled when restoring a team1 pick
+                    disabled=(t1_def > 0),
                 )
 
-                # Runtime mutual exclusion: once user picks from one side,
-                # disable the other using session state flags
                 t1_picked = t1_motm != NO_PICK
                 t2_picked = t2_motm != NO_PICK
 
                 if t1_picked and not t2_picked:
                     motm_choice = t1_motm
-                    st.caption(f"MOTM pick: **{motm_choice}** ({f(team1)})")
+                    st.caption(f"MOTM pick: **{motm_choice}** ({team1})")
                 elif t2_picked and not t1_picked:
                     motm_choice = t2_motm
-                    st.caption(f"MOTM pick: **{motm_choice}** ({f(team2)})")
+                    st.caption(f"MOTM pick: **{motm_choice}** ({team2})")
                 elif not t1_picked and not t2_picked:
                     motm_choice = "N/A"
                 else:
-                    # Both somehow picked — block submission
                     motm_choice = "BOTH_SELECTED"
                     st.error("Select MOTM from only one team, not both.")
 
             else:
                 st.caption("MOTM prediction not available for this match.")
 
-            # ── Submit / Cancel ───────────────────────────────────────────
+            # ── Submit / Cancel ────────────────────────────────────────────
             btn_label = "Update Prediction" if is_edit else "Submit Prediction"
             col_btn, col_cancel = st.columns([2, 1])
             submitted = col_btn.button(btn_label)
@@ -418,8 +362,7 @@ with tab2:
                  if item["match"].strip().lower() == str(m).strip().lower()),
                 None,
             )
-            # Flag-decorated header via markdown so emojis render
-            st.markdown(f"### {f_match(str(m))}")
+            st.subheader(f"Match: {m}")
 
             if match_dict is None or current_time < match_dict["kickoff"]:
                 st.warning("Predictions are hidden until kickoff.")
@@ -447,7 +390,7 @@ with tab3:
     if admin_pass and admin_pass != ADMIN_PASSWORD:
         st.error("Incorrect password.")
     elif admin_pass == ADMIN_PASSWORD:
-        past_fixtures = [f for f in FIXTURES if current_time > f["kickoff"]]
+        past_fixtures = [fix for fix in FIXTURES if current_time > fix["kickoff"]]
 
         if not past_fixtures:
             st.info("No matches have kicked off yet.")
@@ -462,22 +405,19 @@ with tab3:
             labels = []
             for fix in past_fixtures:
                 tag = " (graded)" if fix["match"].strip().lower() in graded_matches else " (needs grading)"
-                labels.append(f"{f_match(fix['match'])}  |  {fix['round']}{tag}")
+                labels.append(f"{fix['match']}  |  {fix['round']}{tag}")
 
             selected_label   = st.selectbox("Select Match to Grade", labels)
             match_to_resolve = past_fixtures[labels.index(selected_label)]["match"]
             team1, team2     = match_to_resolve.split(" vs ")
 
             col1, col2 = st.columns(2)
-            act_t1 = col1.number_input(f"{f(team1)} Final Score", min_value=0, max_value=25, step=1, value=0)
-            act_t2 = col2.number_input(f"{f(team2)} Final Score", min_value=0, max_value=25, step=1, value=0)
+            act_t1 = col1.number_input(f"{team1} Final Score", min_value=0, max_value=25, step=1, value=0)
+            act_t2 = col2.number_input(f"{team2} Final Score", min_value=0, max_value=25, step=1, value=0)
 
             act_pen = "None"
             if act_t1 == act_t2:
-                pen_opts_admin = ["None", f(team1), f(team2)]
-                pen_map_admin  = {"None": "None", f(team1): team1, f(team2): team2}
-                pen_sel_admin  = st.selectbox("Penalty Shootout Winner (draw)", pen_opts_admin)
-                act_pen        = pen_map_admin.get(pen_sel_admin, "None")
+                act_pen = st.selectbox("Penalty Shootout Winner (draw)", ["None", team1, team2])
             else:
                 st.caption("Not a draw — penalty selection disabled.")
 
