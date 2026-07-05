@@ -410,47 +410,70 @@ with tab3:
             selected_label   = st.selectbox("Select Match to Grade", labels)
             match_to_resolve = past_fixtures[labels.index(selected_label)]["match"]
             team1, team2     = match_to_resolve.split(" vs ")
+            already_graded   = match_to_resolve.strip().lower() in graded_matches
 
-            col1, col2 = st.columns(2)
-            act_t1 = col1.number_input(f"{team1} Final Score", min_value=0, max_value=25, step=1, value=0)
-            act_t2 = col2.number_input(f"{team2} Final Score", min_value=0, max_value=25, step=1, value=0)
+            if already_graded:
+                # Pull the saved result from the sheet and display it read-only
+                admin_row = df_existing[
+                    (df_existing["User"].str.strip().str.lower() == "admin_result")
+                    & (df_existing["Match"].str.strip().str.lower() == match_to_resolve.strip().lower())
+                ]
+                if not admin_row.empty:
+                    row      = admin_row.iloc[0]
+                    res_t1   = int(float(row["Team1_Score"])) if pd.notna(row["Team1_Score"]) else "?"
+                    res_t2   = int(float(row["Team2_Score"])) if pd.notna(row["Team2_Score"]) else "?"
+                    res_pen  = str(row.get("Pen_Winner", "N/A")).strip()
+                    res_motm = str(row.get("MOTM", "N/A")).strip()
 
-            act_pen = "None"
-            if act_t1 == act_t2:
-                act_pen = st.selectbox("Penalty Shootout Winner (draw)", ["None", team1, team2])
-            else:
-                st.caption("Not a draw — penalty selection disabled.")
-
-            act_motm = "N/A"
-            if match_to_resolve.strip().lower() not in MOTM_DISABLED_MATCHES:
-                sq1, sq2    = get_combined_squad(team1, team2)
-                all_players = ["N/A"] + sorted(sq1 + sq2)
-                act_motm    = st.selectbox("Official MOTM", all_players)
-
-            st.caption(
-                "Scoring: exact score = 3 pts  |  correct result, wrong score = 2 pts  |  "
-                "correct draw, wrong score = 1 pt  |  "
-                "correct penalty winner (draws only) = +1 pt  |  correct MOTM = +1 pt"
-            )
-
-            if st.button("Submit Official Results"):
-                if act_t1 == act_t2 and act_pen == "None":
-                    st.error("This is a draw — select the penalty shootout winner.")
+                    pen_str  = f"  |  Pens: **{res_pen}**"  if res_pen  not in ("None", "N/A", "nan", "") else ""
+                    motm_str = f"  |  MOTM: **{res_motm}**" if res_motm not in ("N/A", "nan", "")         else ""
+                    st.success(
+                        f"This match has already been graded: "
+                        f"**{team1} {res_t1} - {res_t2} {team2}**{pen_str}{motm_str}"
+                    )
                 else:
-                    payload = {
-                        "action":   "grade",
-                        "match":    match_to_resolve,
-                        "act_t1":   int(act_t1),
-                        "act_t2":   int(act_t2),
-                        "act_pen":  act_pen,
-                        "act_motm": act_motm,
-                    }
-                    ok, message = post_to_backend(payload)
-                    if ok:
-                        st.success(message)
-                        time.sleep(1.0)
-                        st.rerun()
+                    st.success("This match has already been graded.")
+            else:
+                col1, col2 = st.columns(2)
+                act_t1 = col1.number_input(f"{team1} Final Score", min_value=0, max_value=25, step=1, value=0)
+                act_t2 = col2.number_input(f"{team2} Final Score", min_value=0, max_value=25, step=1, value=0)
+
+                act_pen = "None"
+                if act_t1 == act_t2:
+                    act_pen = st.selectbox("Penalty Shootout Winner (draw)", ["None", team1, team2])
+                else:
+                    st.caption("Not a draw — penalty selection disabled.")
+
+                act_motm = "N/A"
+                if match_to_resolve.strip().lower() not in MOTM_DISABLED_MATCHES:
+                    sq1, sq2    = get_combined_squad(team1, team2)
+                    all_players = ["N/A"] + sorted(sq1 + sq2)
+                    act_motm    = st.selectbox("Official MOTM", all_players)
+
+                st.caption(
+                    "Scoring: exact score = 3 pts  |  correct result, wrong score = 2 pts  |  "
+                    "correct draw, wrong score = 1 pt  |  "
+                    "correct penalty winner (draws only) = +1 pt  |  correct MOTM = +1 pt"
+                )
+
+                if st.button("Submit Official Results"):
+                    if act_t1 == act_t2 and act_pen == "None":
+                        st.error("This is a draw — select the penalty shootout winner.")
                     else:
-                        st.error(message)
+                        payload = {
+                            "action":   "grade",
+                            "match":    match_to_resolve,
+                            "act_t1":   int(act_t1),
+                            "act_t2":   int(act_t2),
+                            "act_pen":  act_pen,
+                            "act_motm": act_motm,
+                        }
+                        ok, message = post_to_backend(payload)
+                        if ok:
+                            st.success(message)
+                            time.sleep(1.0)
+                            st.rerun()
+                        else:
+                            st.error(message)
     else:
         st.info("Enter the admin password to grade matches.")
