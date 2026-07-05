@@ -27,7 +27,7 @@ To maintain competition integrity, the platform processes point allocation throu
 * **Partial Draw (1 Point):** Awarded if a user correctly predicts that the match ends in a tie, but misses the exact score.
 * **Penalty Bonus (1 Point):** Awarded if a user predicts who wins the penalty shootout after predicting a draw.
 
-### 3. Bonus : ** +1 Point for guessing the MOTM correctly.
+### 3. Bonus : +1 Point for guessing the MOTM correctly.
 
 ---
 
