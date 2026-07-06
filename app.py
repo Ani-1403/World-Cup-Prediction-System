@@ -484,9 +484,19 @@ with tab2:
             if not played_matches:
                 st.info("No matches graded yet.")
             else:
+                def abbrev(match_str):
+                    """'Brazil vs Norway' -> 'BRA-NOR'"""
+                    if " vs " not in match_str:
+                        return match_str[:6].upper()
+                    t1, t2 = match_str.split(" vs ", 1)
+                    return f"{t1.strip()[:3].upper()}-{t2.strip()[:3].upper()}"
+
                 all_users = agg["User"].tolist()
                 grid = {"Player": all_users}
+                col_legend = []
                 for m in played_matches:
+                    short = abbrev(m)
+                    col_legend.append(f"**{short}** = {m}")
                     col_vals = []
                     for user in all_users:
                         ukey = user.strip().lower()
@@ -495,11 +505,10 @@ with tab2:
                             & (public_df["Match"].str.strip().str.lower() == m.strip().lower())
                         ]
                         col_vals.append(int(row.iloc[0]["Points"]) if not row.empty else "-")
-                    # Truncate long match names for column headers
-                    short = m if len(m) <= 20 else m[:18] + ".."
                     grid[short] = col_vals
                 grid["Total"] = [int(agg[agg["User"] == u]["Points"].values[0]) for u in all_users]
                 st.dataframe(pd.DataFrame(grid), use_container_width=True, hide_index=True)
+                st.caption("  |  ".join(col_legend))
 
     # ── 2b: My Predictions ────────────────────────────────────────────────
     with my_tab:
