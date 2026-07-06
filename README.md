@@ -62,7 +62,6 @@ The bracket advances itself — once you enter the Round of 16 results, the Quar
 | Hosting | [Streamlit Community Cloud](https://streamlit.io/cloud) |
 | Language | Python 3.10+ |
 
-No database, no server to maintain. Everything lives in a Google Sheet you already own.
 
 ---
 
@@ -99,7 +98,7 @@ The `Pins` tab header should be:
 User | PIN
 ```
 
-Both sheets are managed automatically after this — you don't need to touch them manually.
+Both sheets are managed automatically after this.
 
 ### 2. Google Apps Script
 
