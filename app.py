@@ -24,7 +24,7 @@ MOTM_DISABLED_MATCHES = {
     "paraguay vs france",
 }
 
-EDIT_CUTOFF_MINUTES = 60   # edits blocked this many minutes before kickoff
+EDIT_CUTOFF_MINUTES = 15   # edits blocked this many minutes before kickoff
 
 
 def get_secret(key, default=""):
@@ -438,7 +438,7 @@ with tab2:
                     CorrectResult = ("Points", lambda x: ((x == 2) | (x == 3)).sum()),
                     Played      = ("Points", "count"),
                 )
-                .reset_index(drop=True)
+                .reset_index()   # keeps user_key as a column needed for form_str
             )
 
             # Tiebreaker: Points desc, Exact scores desc, Correct results desc
