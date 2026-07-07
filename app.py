@@ -90,6 +90,17 @@ def load_pins():
 
 
 def post_to_backend(payload):
+    # In demo mode, silently succeed without hitting any real endpoint
+    if st.session_state.get("demo_mode", False):
+        action = payload.get("action", "")
+        msgs = {
+            "predict": "Demo: prediction saved (not really — demo mode is on).",
+            "edit":    "Demo: prediction updated (not really — demo mode is on).",
+            "grade":   "Demo: match graded (not really — demo mode is on).",
+            "set_pin": "Demo: PIN set (not really — demo mode is on).",
+        }
+        return True, msgs.get(action, "Demo: action simulated.")
+
     payload = dict(payload)
     payload["secret"] = API_SECRET
     try:
@@ -147,6 +158,125 @@ def explain_points(pred_row, admin_row):
         return ""
 
 
+# ── Demo mode ───────────────────────────────────────────────────────────────
+# When the tournament is over the live sheet has no open matches, so the app
+# looks blank to anyone visiting the GitHub/Streamlit link. Demo mode swaps
+# in a realistic frozen dataset so every tab renders as if the QFs are live.
+
+def build_demo_data():
+    """
+    Returns (df, pins_db, fixtures, current_time, admin_results_map) for a
+    convincing mid-tournament snapshot:
+      - 4 RO16 matches fully graded
+      - 2 QFs fully graded
+      - 1 QF open for prediction (Portugal vs France)
+      - 1 QF upcoming
+      - 6 realistic players with varied scores and MOTM picks
+    The fake current_time is set to 3 hours before Portugal vs France kickoff
+    so the countdown and edit-lock logic all behave realistically.
+    """
+    import pytz
+    from datetime import datetime
+    IST = pytz.timezone("Asia/Kolkata")
+
+    # Fake current time: well before the open QF so predictions are still open
+    fake_now = IST.localize(datetime(2026, 7, 11, 18, 0, 0))
+
+    # Minimal fixture list (just enough to show all tabs working)
+    fixtures = [
+        {"match": "Brazil vs Norway",       "kickoff": IST.localize(datetime(2026, 7, 6,  1, 30)), "round": "Round of 16"},
+        {"match": "Mexico vs England",       "kickoff": IST.localize(datetime(2026, 7, 6,  5, 30)), "round": "Round of 16"},
+        {"match": "Portugal vs Spain",       "kickoff": IST.localize(datetime(2026, 7, 7,  0, 30)), "round": "Round of 16"},
+        {"match": "USA vs Belgium",          "kickoff": IST.localize(datetime(2026, 7, 7,  5, 30)), "round": "Round of 16"},
+        {"match": "Brazil vs England",       "kickoff": IST.localize(datetime(2026, 7, 10, 1, 30)), "round": "Quarterfinal"},
+        {"match": "Portugal vs USA",         "kickoff": IST.localize(datetime(2026, 7, 11, 0, 30)), "round": "Quarterfinal"},
+        {"match": "Portugal vs France",      "kickoff": IST.localize(datetime(2026, 7, 11, 21, 30)), "round": "Quarterfinal"},
+        {"match": "Argentina vs Switzerland","kickoff": IST.localize(datetime(2026, 7, 12, 6, 30)), "round": "Quarterfinal"},
+    ]
+
+    ts = "2026-07-06 10:00:00"
+    rows = [
+        # ── RO16: Brazil 2-1 Norway  (MOTM: Vinicius Junior)
+        ["2026-07-06 03:00:00","ADMIN_RESULT","Brazil vs Norway",       2,1,"None",       "Vinicius Junior","N/A",0],
+        [ts,"Rudrajit",         "Brazil vs Norway",       2,1,"None",       "Vinicius Junior","N/A",5],  # exact+MOTM
+        [ts,"Aniruddha Dey",    "Brazil vs Norway",       2,0,"None",       "Raphinha",      "N/A",2],  # correct result
+        [ts,"Indranil",         "Brazil vs Norway",       3,1,"None",       "Vinicius Junior","N/A",3],  # correct result+MOTM
+        [ts,"Arithromycin",     "Brazil vs Norway",       1,0,"None",       "Erling Haaland","N/A",2],  # correct result
+        [ts,"Supreme leader",   "Brazil vs Norway",       0,1,"None",       "N/A",           "N/A",0],  # wrong
+        [ts,"Kaustav",          "Brazil vs Norway",       2,1,"None",       "N/A",           "N/A",3],  # exact
+
+        # ── RO16: England 1-1 (pens: England) Mexico  (MOTM: Jude Bellingham)
+        ["2026-07-06 07:00:00","ADMIN_RESULT","Mexico vs England",       1,1,"England",      "Jude Bellingham","N/A",0],
+        [ts,"Rudrajit",         "Mexico vs England",       0,1,"England",   "Jude Bellingham","N/A",3],  # correct result+pen+MOTM
+        [ts,"Aniruddha Dey",    "Mexico vs England",       1,1,"England",   "Jude Bellingham","N/A",5],  # exact+pen+MOTM
+        [ts,"Indranil",         "Mexico vs England",       0,2,"None",      "N/A",           "N/A",0],  # wrong
+        [ts,"Arithromycin",     "Mexico vs England",       1,1,"Mexico",    "N/A",           "N/A",1],  # correct draw, wrong pen
+        [ts,"Supreme leader",   "Mexico vs England",       2,1,"None",      "N/A",           "N/A",0],  # wrong
+        [ts,"Kaustav",          "Mexico vs England",       1,1,"England",   "N/A",           "N/A",2],  # correct draw+pen
+
+        # ── RO16: Spain 3-1 Portugal  (MOTM: Lamine Yamal)
+        ["2026-07-07 02:00:00","ADMIN_RESULT","Portugal vs Spain",       1,3,"None",         "Lamine Yamal","N/A",0],
+        [ts,"Rudrajit",         "Portugal vs Spain",       1,3,"None",     "Lamine Yamal",  "N/A",4],  # exact+MOTM
+        [ts,"Aniruddha Dey",    "Portugal vs Spain",       0,2,"None",     "Nico Williams", "N/A",2],  # correct result
+        [ts,"Indranil",         "Portugal vs Spain",       1,2,"None",     "Lamine Yamal",  "N/A",3],  # correct result+MOTM
+        [ts,"Arithromycin",     "Portugal vs Spain",       2,1,"None",     "N/A",           "N/A",0],  # wrong
+        [ts,"Supreme leader",   "Portugal vs Spain",       0,3,"None",     "N/A",           "N/A",2],  # correct result
+        [ts,"Kaustav",          "Portugal vs Spain",       1,3,"None",     "N/A",           "N/A",3],  # exact
+
+        # ── RO16: USA 0-0 (pens: Belgium) Belgium  (MOTM: Kevin De Bruyne)
+        ["2026-07-07 07:00:00","ADMIN_RESULT","USA vs Belgium",          0,0,"Belgium",      "Kevin De Bruyne","N/A",0],
+        [ts,"Rudrajit",         "USA vs Belgium",          0,0,"Belgium",  "Kevin De Bruyne","N/A",4],  # correct draw+pen+MOTM
+        [ts,"Aniruddha Dey",    "USA vs Belgium",          1,0,"None",     "N/A",           "N/A",0],  # wrong
+        [ts,"Indranil",         "USA vs Belgium",          0,0,"USA",      "N/A",           "N/A",1],  # correct draw, wrong pen
+        [ts,"Arithromycin",     "USA vs Belgium",          0,1,"None",     "N/A",           "N/A",0],  # wrong
+        [ts,"Supreme leader",   "USA vs Belgium",          0,0,"Belgium",  "N/A",           "N/A",2],  # correct draw+pen
+        [ts,"Kaustav",          "USA vs Belgium",          0,0,"Belgium",  "Kevin De Bruyne","N/A",4],  # correct draw+pen+MOTM
+
+        # ── QF1: Brazil 2-0 England  (MOTM: Vinicius Junior)
+        ["2026-07-10 03:00:00","ADMIN_RESULT","Brazil vs England",       2,0,"None",         "Vinicius Junior","N/A",0],
+        [ts,"Rudrajit",         "Brazil vs England",       2,0,"None",     "Vinicius Junior","N/A",4],  # exact+MOTM
+        [ts,"Aniruddha Dey",    "Brazil vs England",       1,0,"None",     "N/A",           "N/A",2],  # correct result
+        [ts,"Indranil",         "Brazil vs England",       3,1,"None",     "N/A",           "N/A",2],  # correct result
+        [ts,"Arithromycin",     "Brazil vs England",       2,0,"None",     "N/A",           "N/A",3],  # exact
+        [ts,"Supreme leader",   "Brazil vs England",       0,1,"None",     "N/A",           "N/A",0],  # wrong
+        [ts,"Kaustav",          "Brazil vs England",       2,1,"None",     "N/A",           "N/A",2],  # correct result
+
+        # ── QF2: Portugal 1-0 USA  (MOTM: Bruno Fernandes)
+        ["2026-07-11 02:00:00","ADMIN_RESULT","Portugal vs USA",         1,0,"None",         "Bruno Fernandes","N/A",0],
+        [ts,"Rudrajit",         "Portugal vs USA",         1,0,"None",     "Bruno Fernandes","N/A",4],  # exact+MOTM
+        [ts,"Aniruddha Dey",    "Portugal vs USA",         2,0,"None",     "N/A",           "N/A",2],  # correct result
+        [ts,"Indranil",         "Portugal vs USA",         1,0,"None",     "N/A",           "N/A",3],  # exact
+        [ts,"Arithromycin",     "Portugal vs USA",         0,1,"None",     "N/A",           "N/A",0],  # wrong
+        [ts,"Supreme leader",   "Portugal vs USA",         1,1,"Portugal", "N/A",           "N/A",0],  # wrong
+        [ts,"Kaustav",          "Portugal vs USA",         1,0,"None",     "Bruno Fernandes","N/A",4],  # exact+MOTM
+
+        # ── QF3: Portugal vs France — OPEN, predictions already submitted
+        [ts,"Rudrajit",         "Portugal vs France",      2,1,"None",     "Kylian Mbappe",  "N/A",0],
+        [ts,"Aniruddha Dey",    "Portugal vs France",      1,2,"None",     "Kylian Mbappe",  "N/A",0],
+        [ts,"Indranil",         "Portugal vs France",      1,1,"Portugal", "Cristiano Ronaldo","N/A",0],
+        [ts,"Arithromycin",     "Portugal vs France",      0,1,"None",     "Kylian Mbappe",  "N/A",0],
+        [ts,"Supreme leader",   "Portugal vs France",      2,0,"None",     "N/A",           "N/A",0],
+        [ts,"Kaustav",          "Portugal vs France",      1,2,"None",     "N/A",           "N/A",0],
+    ]
+
+    cols = ["Timestamp","User","Match","Team1_Score","Team2_Score","Pen_Winner","MOTM","Scorers","Points"]
+    df   = pd.DataFrame(rows, columns=cols)
+    for c in ["Team1_Score","Team2_Score","Points"]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    df["Points"]    = df["Points"].fillna(0)
+    df["User"]      = df["User"].astype(str)
+    df["Match"]     = df["Match"].astype(str)
+
+    admin_map = {}
+    for _, row in df[df["User"] == "ADMIN_RESULT"].iterrows():
+        admin_map[row["Match"].strip().lower()] = row
+
+    # Fake PIN db — demo user logs in without a real PIN
+    fake_pins = {"demo": "0000"}
+
+    return df, fake_pins, fixtures, fake_now, admin_map
+
+
 # ── Bootstrap ───────────────────────────────────────────────────────────────
 df_existing, load_err = load_predictions()
 if load_err:
@@ -170,15 +300,35 @@ st.title("World Cup 2026 Predictor")
 for key, default in [
     ("username", None), ("just_submitted", set()),
     ("editing_match", None), ("pin_verified", False),
-    ("confirm_grade", None),
+    ("confirm_grade", None), ("demo_mode", False),
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
-# ── Sidebar: upcoming deadlines ─────────────────────────────────────────────
+# ── Sidebar: demo toggle + refresh ──────────────────────────────────────────
 st.sidebar.header("User Profile")
 if st.sidebar.button("Refresh data"):
     st.rerun()
+
+st.sidebar.markdown("---")
+demo_on = st.sidebar.toggle("Demo mode", value=st.session_state.demo_mode, key="demo_toggle")
+if demo_on != st.session_state.demo_mode:
+    st.session_state.demo_mode      = demo_on
+    st.session_state.username       = None
+    st.session_state.pin_verified   = False
+    st.session_state.just_submitted = set()
+    st.session_state.editing_match  = None
+    st.rerun()
+
+if st.session_state.demo_mode:
+    df_existing, pins_db, FIXTURES, current_time, admin_results_map = build_demo_data()
+    graded_matches = set(admin_results_map.keys())
+    st.info(
+        "**Demo mode is on.** This is a realistic mid-tournament snapshot with "
+        "fictional data. Log in as **Demo** with PIN **0000** to explore every feature. "
+        "Nothing you do here is saved.",
+        icon="\u2139\ufe0f",
+    )
 
 upcoming = [
     fix for fix in FIXTURES
@@ -429,17 +579,68 @@ with tab2:
         if public_df.empty:
             st.info("No scores calculated yet.")
         else:
+            # ── Compute exact scores properly ──────────────────────────────
+            # "Exact score" means the predicted scoreline matches the official
+            # result exactly. We can't derive this from Points alone (e.g.
+            # 2pts result + 1pt MOTM = 3pts but is NOT an exact score).
+            # We join each user's predictions against the admin result rows.
+
+            graded_ordered = [
+                fix["match"] for fix in FIXTURES
+                if fix["match"].strip().lower() in graded_matches
+            ]
+
+            def count_exact(user_key):
+                count = 0
+                for m_key, admin_row in admin_results_map.items():
+                    pred = public_df[
+                        (public_df["user_key"] == user_key)
+                        & (public_df["Match"].str.strip().str.lower() == m_key)
+                    ]
+                    if pred.empty:
+                        continue
+                    p = pred.iloc[0]
+                    try:
+                        if (int(float(p["Team1_Score"])) == int(float(admin_row["Team1_Score"])) and
+                                int(float(p["Team2_Score"])) == int(float(admin_row["Team2_Score"]))):
+                            count += 1
+                    except (ValueError, TypeError):
+                        pass
+                return count
+
+            def count_correct_results(user_key):
+                count = 0
+                for m_key, admin_row in admin_results_map.items():
+                    pred = public_df[
+                        (public_df["user_key"] == user_key)
+                        & (public_df["Match"].str.strip().str.lower() == m_key)
+                    ]
+                    if pred.empty:
+                        continue
+                    p = pred.iloc[0]
+                    try:
+                        p1 = int(float(p["Team1_Score"]))
+                        p2 = int(float(p["Team2_Score"]))
+                        a1 = int(float(admin_row["Team1_Score"]))
+                        a2 = int(float(admin_row["Team2_Score"]))
+                        if (p1 > p2 and a1 > a2) or (p1 < p2 and a1 < a2) or (p1 == p2 and a1 == a2):
+                            count += 1
+                    except (ValueError, TypeError):
+                        pass
+                return count
+
             agg = (
                 public_df.groupby("user_key")
                 .agg(
-                    Points      = ("Points", "sum"),
-                    User        = ("User",   "first"),
-                    Exact       = ("Points", lambda x: (x == 3).sum()),
-                    CorrectResult = ("Points", lambda x: ((x == 2) | (x == 3)).sum()),
-                    Played      = ("Points", "count"),
+                    Points = ("Points", "sum"),
+                    User   = ("User",   "first"),
+                    Played = ("Points", "count"),
                 )
-                .reset_index()   # keeps user_key as a column needed for form_str
+                .reset_index()   # keeps user_key as a column
             )
+
+            agg["Exact"]         = agg["user_key"].apply(count_exact)
+            agg["CorrectResult"] = agg["user_key"].apply(count_correct_results)
 
             # Tiebreaker: Points desc, Exact scores desc, Correct results desc
             agg = agg.sort_values(
@@ -447,29 +648,22 @@ with tab2:
                 ascending=[False, False, False]
             ).reset_index(drop=True)
 
-            # Form: last 3 graded matches for each user (W/D/L based on pts)
-            graded_ordered = [
-                fix["match"] for fix in FIXTURES
-                if fix["match"].strip().lower() in graded_matches
-            ]
+            # Form: actual points scored in each of the last 3 graded matches
             def form_str(user_key):
-                results = []
-                for m in reversed(graded_ordered[-3:]):
+                last3 = graded_ordered[-3:]
+                parts = []
+                for m in last3:
                     row = public_df[
                         (public_df["user_key"] == user_key)
                         & (public_df["Match"].str.strip().str.lower() == m.strip().lower())
                     ]
-                    if row.empty:
-                        results.append("-")
-                    else:
-                        pts = int(row.iloc[0]["Points"])
-                        results.append("W" if pts >= 3 else ("D" if pts >= 1 else "L"))
-                return " ".join(reversed(results)) if results else "-"
+                    parts.append(str(int(row.iloc[0]["Points"])) if not row.empty else "-")
+                return "  ".join(parts) if parts else "-"
 
-            agg["Form (last 3)"] = agg["user_key"].apply(form_str)
-            agg["Rank"] = [f"{i+1}." for i in range(len(agg))]
+            agg["Last 3"] = agg["user_key"].apply(form_str)
+            agg["Rank"]   = [f"{i+1}." for i in range(len(agg))]
 
-            display_lb = agg[["Rank", "User", "Points", "Exact", "Form (last 3)"]].rename(
+            display_lb = agg[["Rank", "User", "Points", "Exact", "Last 3"]].rename(
                 columns={"Exact": "Exact Scores"}
             )
             st.dataframe(display_lb, use_container_width=True, hide_index=True)
