@@ -62,6 +62,7 @@ The bracket advances itself — once you enter the Round of 16 results, the Quar
 | Hosting | [Streamlit Community Cloud](https://streamlit.io/cloud) |
 | Language | Python 3.10+ |
 
+No database, no server to maintain. 
 
 ---
 
@@ -185,6 +186,22 @@ Points are calculated and saved to the sheet instantly. The leaderboard updates 
 `squads.py` contains the official FIFA-confirmed 26-man squads for all 14 teams still active as of the Round of 16 (Canada and Paraguay are excluded as they were eliminated). Players are listed alphabetically and appear in the MOTM dropdown when predicting a match.
 
 For Quarterfinal, Semifinal, and Final matches, the MOTM dropdowns will show the squads of whichever teams progress, as long as those teams are in `squads.py`. If a team reaches the later rounds whose squad isn't listed (which shouldn't happen with the current bracket), the MOTM section is gracefully hidden rather than crashing.
+
+---
+
+## Demo mode
+
+Once the tournament ends, the live sheet will have no upcoming matches and the app will look blank to anyone who visits the Streamlit link. To handle this, there's a **Demo mode** toggle in the sidebar.
+
+When switched on:
+
+- All live sheet data is replaced with a realistic fictional snapshot — 6 players, 4 graded Round of 16 matches, 2 graded Quarterfinals, and one open Quarterfinal (Portugal vs France) with predictions already submitted
+- The fake current time is set to a few hours before the open match, so the countdown timer, edit-lock logic, and deadline sidebar all behave as they would mid-tournament
+- Every tab is fully populated: leaderboard with tiebreakers and form guides, points breakdown grid, personal prediction history with explainers, and the admin audit log
+- Log in as **Demo** with PIN **0000** to explore as a player
+- Nothing in demo mode touches your real Google Sheet — submissions are silently swapped out
+
+Demo mode is toggled off by default. Flip it on before sharing your GitHub link with anyone.
 
 ---
 
