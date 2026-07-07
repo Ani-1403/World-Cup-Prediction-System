@@ -24,7 +24,7 @@ MOTM_DISABLED_MATCHES = {
     "paraguay vs france",
 }
 
-EDIT_CUTOFF_MINUTES = 15   # edits blocked this many minutes before kickoff
+EDIT_CUTOFF_MINUTES = 60   # edits blocked this many minutes before kickoff
 
 
 def get_secret(key, default=""):
